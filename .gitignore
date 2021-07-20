@@ -3,3 +3,4 @@
 *.pdb
 *.out
 .DS_Store
+.vscode/

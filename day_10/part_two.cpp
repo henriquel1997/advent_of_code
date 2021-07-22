@@ -21,7 +21,8 @@ String readFile(const char* fileName){
 }
 
 #define uint64 unsigned long long
-#define NUMBERS_IN_LIST 101
+//The + 2 is for the beginning and the end values that don't come in the list
+#define NUMBERS_IN_LIST 101 + 2
 
 uint64 numberOfPaths[NUMBERS_IN_LIST] = {0};
 
@@ -57,13 +58,13 @@ int main(){
     String text = readFile("input.txt");
 
     char* position = text.data;
-    long numbers[NUMBERS_IN_LIST + 2];
+    long numbers[NUMBERS_IN_LIST];
     int size = 0;
 
     numbers[size++] = 0;
     
     //Insertion sort
-    while(*(position + 1) != '\0' && size < (NUMBERS_IN_LIST + 2) && ((position - text.data) < text.size)){
+    while(*(position + 1) != '\0' && size < NUMBERS_IN_LIST && ((position - text.data) < text.size)){
         long value = strtol(position, &position, 10);
 
         int pos = size;

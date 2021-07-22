@@ -2,5 +2,6 @@
 *.ilk
 *.pdb
 *.out
+*.obj
 .DS_Store
 .vscode/

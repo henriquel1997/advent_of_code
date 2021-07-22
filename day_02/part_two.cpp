@@ -1,25 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-
-struct String {
-    long size;
-    char* data;
-};
-
-String readFile(const char* fileName){
-    FILE *f = fopen(fileName, "rb");
-    fseek(f, 0, SEEK_END);
-    long fsize = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    char* string = (char*) malloc(fsize + 1);
-    fread(string, 1, fsize, f);
-    fclose(f);
-
-    string[fsize] = 0;
-    return (String){fsize, string};
-}
+#include "..\common.h"
 
 struct Password {
     long first_position;
@@ -32,12 +11,12 @@ Password parsePassword(char** text){
     char* position = *text;
 
     long first_position = strtol(position, &position, 10);
-    if(first_position <= 0) return (Password){};
+    if(first_position <= 0) return {};
 
     position++;
     
     long second_position = strtol(position, &position, 10);
-    if(second_position <= 0) return (Password){};
+    if(second_position <= 0) return {};
 
     position++;
 
@@ -52,7 +31,7 @@ Password parsePassword(char** text){
         passwordLength++;
     }
     
-    password.text = (String){passwordLength, passwordStart};
+    password.text = {passwordLength, passwordStart};
 
     *text = &passwordStart[passwordLength];
 

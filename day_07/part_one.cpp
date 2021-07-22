@@ -1,62 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <string.h>
-
-struct String {
-    long size;
-    char* data;
-};
-
-String readFile(const char* fileName){
-    FILE *f = fopen(fileName, "rb");
-    fseek(f, 0, SEEK_END);
-    long fsize = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    char* string = (char*) malloc(fsize + 1);
-    fread(string, 1, fsize, f);
-    fclose(f);
-
-    string[fsize] = 0;
-    return (String){fsize, string};
-}
-
-bool strings_equal(char* str1, char* str2, int length){
-    for(int i = 0; i < length; i++){
-        if(str1[i] != str2[i]){
-            return false;
-        }
-    }
-    return true;
-}
-
-bool strings_equal(char* str1, const char* str2){
-    return strings_equal(str1, (char*) str2, strlen(str2));
-}
-
-bool strings_equal(String str1, const char* str2){
-    long constLength = strlen(str2);
-    if(str1.size != constLength){
-        return false;
-    }
-    return strings_equal(str1.data, (char*)str2, constLength);
-}
-
-bool strings_equal(String str1, String str2){
-    if(str1.size != str2.size){
-        return false;
-    }
-    return strings_equal(str1.data, str2.data, str1.size);
-}
-
-bool isDigit(char c){
-    return c >= '0' && c <= '9';
-}
-
-bool isLetter(char c){
-    return c >= 'a' && c <= 'z';
-}
+#include "..\common.h"
 
 struct BagChildren {
     int index;
@@ -88,7 +30,7 @@ int createBag(String name, BagChildren* children = 0){
 
     if(index < 0){
         index = numBags;
-        bags[numBags++] = (Bag){name, children};
+        bags[numBags++] = {name, children};
     }else{
         if(children){
             bags[index].children = children;
@@ -135,7 +77,7 @@ int parseBag(char** position){
 
         int index = createBag(childrenName);
 
-        childrens[numChildrens] = (BagChildren){index, quantity, previousChildren};
+        childrens[numChildrens] = {index, quantity, previousChildren};
         previousChildren = &childrens[numChildrens++];
 
         while((**position) != ',' && (**position) != '.') (*position)++;

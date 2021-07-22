@@ -1,24 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-
-struct String {
-    long size;
-    char* data;
-};
-
-String readFile(const char* fileName){
-    FILE *f = fopen(fileName, "rb");
-    fseek(f, 0, SEEK_END);
-    long fsize = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    char* string = (char*) malloc(fsize + 1);
-    fread(string, 1, fsize, f);
-    fclose(f);
-
-    string[fsize] = 0;
-    return {fsize, string};
-}
+#include "..\common.h"
 
 #define NUMBERS_IN_LIST 101
 
@@ -57,7 +37,7 @@ int main(){
         else if(difference == 3) differencesOf3++;
         printf("%i - %ld (%ld)\n", i + 1, numbers[i], difference);
     }
-    printf("%i - %ld (%ld)\n", index, numbers[index - 1], 3);
+    printf("%i - %ld (%i)\n", index, numbers[index - 1], 3);
 
     printf("Differences of 1: %i\n", differencesOf1);
     printf("Differences of 3: %i\n", differencesOf3);

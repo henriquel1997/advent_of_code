@@ -1,37 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <string.h>
-
-struct String {
-    long size;
-    char* data;
-};
-
-String readFile(const char* fileName){
-    FILE *f = fopen(fileName, "rb");
-    fseek(f, 0, SEEK_END);
-    long fsize = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    char* string = (char*) malloc(fsize + 1);
-    fread(string, 1, fsize, f);
-    fclose(f);
-
-    string[fsize] = 0;
-    return (String){fsize, string};
-}
-
-bool strings_equal(char* str1, char* str2, int length){
-    for(int i = 0; i < length; i++){
-        if(str1[i] != str2[i]){
-            return false;
-        }
-    }
-    return true;
-}
-
-#define array_size(array) (sizeof(array)/sizeof(array[0]))
+#include "..\common.h"
 
 void goToNextField(char** position){
     while(**position != ' ' && **position != '\n'){

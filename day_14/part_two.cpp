@@ -44,8 +44,7 @@ int main(){
 
 			//Setting the value at all addresses (minus the ones above)
 			uint64 xMask = 68719476735ULL; //All 36 bits set
-			uint64 numBits = 1;
-			for (int i = 0; i < numXPos; i++) numBits *= 2;
+			uint64 numBits = 1ULL << numXPos; // 2 ^ numXPos
 			for (uint64 bits = 0; bits < numBits; bits++) {
 				for (uint64 index = 0; index < numXPos; index++) {
 					//Getting the bit at index
@@ -86,9 +85,6 @@ int main(){
 	for(uint64 i = 0; i < usedSlots; i++){
 		uint64 prev = sum;
 		sum += memValues[i];
-		if(sum < prev){
-			printf("Sum overflow\n");
-		}
 	}
 	printf("Num slots: %llu\n", usedSlots);
 	printf("Sum of all values: %llu\n", sum);

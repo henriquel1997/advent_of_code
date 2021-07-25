@@ -1,28 +1,5 @@
 #include "..\common.h"
 
-struct TextFileInfo{
-    uint64 numberOfLines;
-    uint64 maxLineSize;
-};
-
-TextFileInfo getTextFileInfo(String text){
-    uint64 numberOfLines = 0;
-    uint64 maxLineSize = 0;
-    char* lineStart = text.data;
-    for(int i = 0; i < text.size; i++){
-        if(text.data[i] == '\n'){
-            numberOfLines++;
-            char* lineEnd = &text.data[i];
-            uint64 lineSize = (uint64)lineEnd - (uint64)lineStart;
-            if(lineSize > maxLineSize){
-                maxLineSize = lineSize;
-            }
-            lineStart = lineEnd + 1;
-        }
-    }
-    return {numberOfLines, maxLineSize};
-}
-
 enum ChairState {
     CHAIR_STATE_FLOOR,
     CHAIR_STATE_EMPTY,

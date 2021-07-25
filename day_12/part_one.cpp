@@ -1,7 +1,5 @@
 #include "..\common.h"
 
-#define abs(x) ((x) >= 0 ? (x) : -(x))
-
 int main(){
 	String text = readFile("input.txt");
 

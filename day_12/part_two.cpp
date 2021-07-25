@@ -1,8 +1,5 @@
 #include "..\common.h"
 
-#define abs(x) ((x) >= 0 ? (x) : -(x))
-#define sign(x) ((x) >= 0 ? (1) : -1)
-
 struct Position {
 	long x;
 	long y;

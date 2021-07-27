@@ -18,15 +18,14 @@ struct Memory {
 	uint64* ids;
 };
 
-bool isRuleValid(char** text, Memory memory, uint64 ruleId, int64 nextRuleId = -1);
+bool isRuleValid(char** text, Memory memory, uint64 ruleId);
 
-bool isSequenceValid(char** text, Sequence sequence, Memory memory, int64 nextRuleId){
+bool isSequenceValid(char** text, Sequence sequence, Memory memory){
 	char* start = *text;
 
 	for(uint64 i = 0; i < sequence.numIds; i++){
 		uint64 id = sequence.ids[i];
-		int64 nextId = (i + 1) < sequence.numIds ? sequence.ids[i + 1] : -1;
-		if(!isRuleValid(text, memory, id, nextId)){
+		if(!isRuleValid(text, memory, id)){
 			*text = start;
 			return false;
 		}
@@ -34,60 +33,7 @@ bool isSequenceValid(char** text, Sequence sequence, Memory memory, int64 nextRu
 	return true;
 }
 
-bool isRule8Valid(char** text, Memory memory, int64 nextRuleId = -1){
-	char* start = *text;
-	if (!isRuleValid(text, memory, 42)) return false;
-
-	if (nextRuleId >= 0){
-		char* next = *text;
-		char* nextStart = next;
-		while(!isRuleValid(&next, memory, nextRuleId)){
-			next++;
-			nextStart = next;
-			if(*next == '\n'){
-				*text = start;
-				return false;
-			}
-		}
-
-		if(nextStart == *text){
-			return true;
-		}
-		
-		if(!isRule8Valid(text, memory) || *text < nextStart){
-			*text = start;
-			return false;
-		}
-	} else {
-		while (isRuleValid(text, memory, 42));
-	}
-	return true;
-}
-
-bool isRule11Valid(char** text, Memory memory){
-	char* start = *text;
-	
-	uint64 firstCount = 0;
-	while (isRuleValid(text, memory, 42)) firstCount++;
-	
-	if(firstCount > 0){
-		uint64 secondCount = 0;
-		while (isRuleValid(text, memory, 31)) secondCount++;
-		if(firstCount == secondCount){
-			return true;
-		}
-	}
-
-	*text = start;
-	return false;
-}
-
-bool isRuleValid(char** text, Memory memory, uint64 ruleId, int64 nextRuleId){
-	if(ruleId == 8){
-		return isRule8Valid(text, memory, nextRuleId);
-	} else if (ruleId == 11){
-		return isRule11Valid(text, memory);
-	}
+bool isRuleValid(char** text, Memory memory, uint64 ruleId){
 
 	Rule rule = memory.rules[ruleId];
 
@@ -96,11 +42,66 @@ bool isRuleValid(char** text, Memory memory, uint64 ruleId, int64 nextRuleId){
 	}
 
 	if(rule.numSequences == 1){
-		return isSequenceValid(text, rule.firstSequence, memory, nextRuleId);
+		return isSequenceValid(text, rule.firstSequence, memory);
 	}
 
-	return isSequenceValid(text, rule.firstSequence, memory, nextRuleId) || 
-		   isSequenceValid(text, rule.secondSequence, memory, nextRuleId);
+	return isSequenceValid(text, rule.firstSequence, memory) || 
+		   isSequenceValid(text, rule.secondSequence, memory);
+}
+
+bool isRule8Valid(char** text, Memory memory, char* end){
+	if (!isRuleValid(text, memory, 42)) return false;
+
+	do{
+		if(*text == end){
+			return true;
+		}
+	}while (isRuleValid(text, memory, 42));
+	return false;
+}
+
+bool isRule11Valid(char** text, Memory memory){
+	char* start = *text;
+	
+	uint64 firstCount = 0;
+	while (isRuleValid(text, memory, 42)) firstCount++;
+	
+	bool valid = false;
+	if(firstCount > 0){
+		uint64 secondCount = 0;
+		while (isRuleValid(text, memory, 31)) secondCount++;
+		if(firstCount == secondCount){
+			valid = true;
+		}
+	}
+	
+	if(!valid) *text = start;
+	return valid;
+}
+
+bool isRule0Valid(char** text, Memory memory){
+	char* rule11Start = *text;
+	while (*(rule11Start) != '\n') rule11Start++;
+	char* endText = rule11Start;
+
+	char* rule11Current;
+
+	while (true) {
+		do {
+			rule11Start--;
+			rule11Current = rule11Start;
+			if (rule11Start < *text) {
+				return false;
+			}
+		} while (!isRule11Valid(&rule11Current, memory) || (*rule11Current != '\n'));
+
+		char* rule8End = *text;
+		if (isRule8Valid(&rule8End, memory, rule11Start)) {
+			*text = endText;
+			return true;
+		}
+	}
+	return false;
 }
 
 #define MAX_RULES 1000
@@ -180,7 +181,7 @@ int main(){
 	//Validate the strings
 	uint64 validStringCount = 0;
 	while((position - text.data) < text.size){
-		if(isRuleValid(&position, memory, 0)){
+		if(isRule0Valid(&position, memory)){
 			if(*position == '\n'){
 				validStringCount++;
 			}

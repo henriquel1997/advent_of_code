@@ -99,3 +99,11 @@ bool isDigit(char c){
 bool isLetter(char c){
     return c >= 'a' && c <= 'z';
 }
+
+bool isWhiteSpace(char c){
+	return c == ' ' || c == '\t';
+}
+
+void eatWhiteSpace(char** text){
+	while (isWhiteSpace(**text)) (*text)++;
+}

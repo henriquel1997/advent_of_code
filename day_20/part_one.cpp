@@ -1,5 +1,4 @@
 #include "..\common.h"
-#include <xmmintrin.h>
 
 #define TILE_SIZE 10
 
@@ -17,33 +16,7 @@ struct Tile{
 	Side left;
 	Side right;
 	Side bottom;
-	Tile* next;
-	Tile* prev;
 };
-
-struct List {
-	uint64 size;
-	Tile* start;
-	Tile* end;
-};
-
-void pushTile(List* list, Tile* tile){
-	list->end->next = tile;
-	tile->prev = list->end;
-	list->end = tile;
-
-	list->size++;
-}
-
-Tile* popTile(List* list){
-	Tile* tile = list->start;
-	list->start = tile->next;
-	list->start->prev = 0;
-	tile->next = 0;
-
-	list->size--;
-	return tile;
-}
 
 Side reverseSide(Side side){
 	Side result = 0;
@@ -78,37 +51,23 @@ Tile getTileFlipped(Tile* tile, int flip){
 	return flipped;
 }
 
-bool searchTiles(List* list, uint64 x, uint64 y, Tile** square, uint64 squareSize){
-	uint64 listSize = list->size;
-	for(uint64 count = 0; count < listSize; count++){
-		Tile* tile = popTile(list);
-		for (int i = 0; i < 4; i++) {
-			Tile flipped = getTileFlipped(tile, i);
-
-			if (
-				(x == 0 || square[x - 1][y].right == flipped.left) &&
-				(y == 0 || square[x][y - 1].bottom == flipped.top)
-			) {
-				square[x][y] = flipped;
-
-				if (x == (squareSize - 1) && y == (squareSize - 1)) {
-					return true;
-				}
-
-				uint64 nextX = (x < (squareSize - 1)) ? (x + 1) : 0;
-				uint64 nextY = (nextX > 0) ? y : (y + 1);
-				if (searchTiles(list, nextX, nextY, square, squareSize)) {
-					return true;
-				}
-			}
-		}
-		pushTile(list, tile);
+Tile getTileRotated(Tile* tile, int rotation){
+	Tile rotated = *tile;
+	rotation = rotation % 4;
+	for(int i = 1; i < rotation; i++){
+		Side aux = rotated.right;
+		rotated.right = rotated.top;
+		Side aux2 = rotated.bottom;
+		rotated.bottom = reverseSide(aux);
+		rotated.top = reverseSide(rotated.left);
+		rotated.left = aux2;
 	}
-	return false;
+	return rotated;
 }
 
-inline uint64 squareRoot(uint64 value) {
-	return (uint64)_mm_cvtss_f32(_mm_sqrt_ss(_mm_set_ss((float)value)));
+Tile getTileVariation(Tile* tile, int variation){
+	Tile rotated = getTileRotated(tile, variation % 4);
+	return getTileFlipped(&rotated, variation / 4);
 }
 
 int main(){
@@ -162,32 +121,63 @@ int main(){
 			while(*position == '\r' || *position == '\n') position++;
 		}
 
-		if(tileCont > 0)              tile.prev = &tiles[tileCont - 1];
-		if((tileCont + 1) < numTiles) tile.next = &tiles[tileCont + 1];
 		tiles[tileCont++] = tile;
 
 		while(*position == '\r' || *position == '\n') position++;
 	}
 
-	//Search for a solution
-	List list;
-	list.size = numTiles;
-	list.start = tiles;
-	list.end = &tiles[numTiles - 1];
-
-	uint64 squareSize = squareRoot(numTiles);
-	Tile* squareMemory = (Tile*) malloc(tileBytes);
-	Tile** square = (Tile**) malloc(squareSize * sizeof(Tile*));
-	for(uint64 i = 0; i < squareSize; i++){
-		square[i] = &squareMemory[i * squareSize];
+	//Search for the corners
+	int cornersCount = 0;
+	Tile corners[4];
+	for (uint64 n = 0; n < numTiles; n++) {
+		Tile tile = tiles[n];
+		int topFound = 0;
+		int bottomFound = 0;
+		int leftFound = 0;
+		int rightFound = 0;
+		
+		bool found = false;
+		for (uint64 m = 0; m < numTiles; m++) {
+			if (n != m) {
+				Tile other = tiles[m];
+				for (int i = 0; i < 16; i++) {
+					Tile otherFlipped = getTileVariation(&other, i);
+					if(!leftFound && tile.left == otherFlipped.right){
+						leftFound = 1;
+					}
+					if(!rightFound && tile.right == otherFlipped.left){
+						rightFound = 1;
+					}
+					if(!topFound && tile.top == otherFlipped.bottom){
+						topFound = 1;
+					}
+					if(!bottomFound && tile.bottom == otherFlipped.top){
+						bottomFound = 1;
+					}
+					
+					if((topFound + bottomFound + leftFound + rightFound) > 2){
+						found = true;
+						goto end;
+					}
+				}
+			}
+		}
+		end:
+		if(!found){
+			corners[cornersCount++] = tile;
+			if(cornersCount >= 4){
+				break;
+			}
+		}
 	}
 
-	if(searchTiles(&list, 0, 0, square, squareSize)){
-		uint64 end = squareSize - 1;
-		uint64 result = square[0][0].id * square[0][end].id * square[end][0].id * square[end][end].id;
+	if(cornersCount >= 4){
+		uint64 result = corners[0].id * corners[1].id * corners[2].id * corners[3].id;
 		printf("Corners multiplied: %llu\n", result);
+	} else if(cornersCount > 0){
+		printf("Only %i corners found\n", cornersCount);
 	} else {
-		printf("No combinations found\n");
-	}	
+		printf("No corners found\n");
+	}
 	return 0;
 }

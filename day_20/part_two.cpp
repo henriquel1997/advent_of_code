@@ -2,12 +2,18 @@
 #include <xmmintrin.h>
 
 #define TILE_SIZE 10
+#define CONTENT_LINE_SIZE (TILE_SIZE - 2)
 
 #if (TILE_SIZE <= 16)
 #define Side unsigned short int
 #else
 //The other cases could be treated here if necessary
-#define Side uint64
+#endif
+
+#if (CONTENT_LINE_SIZE <= 8)
+#define ContentLine unsigned char
+#else
+//The other cases could be treated here if necessary
 #endif
 
 //Every side is and array of bits
@@ -17,6 +23,9 @@ struct Tile{
 	Side left;
 	Side right;
 	Side bottom;
+	
+	ContentLine content[CONTENT_LINE_SIZE];
+	
 	Tile* next;
 	Tile* prev;
 };
@@ -27,20 +36,14 @@ struct List {
 	Tile* end;
 };
 
-void removeTile(Tile* tile){
-	if (tile->next) tile->next->prev = tile->prev;
-	if (tile->prev)tile->prev->next = tile->next;
-	tile->next = 0;
-	tile->prev = 0;
-}
-
-void removeTile(List* list, Tile* tile){
+void removeTileFromList(List* list, Tile* tile){
 	if (tile->next) tile->next->prev = tile->prev;
 	if (tile->prev)tile->prev->next = tile->next;
 	if (list->start == tile) list->start = tile->next;
 	if (list->end == tile) list->end = tile->prev;
 	tile->next = 0;
 	tile->prev = 0;
+	list->size--;
 }
 
 void pushTile(List* list, Tile* tile){
@@ -85,6 +88,7 @@ Tile getTileFlipped(Tile* tile, int flip){
 		Side aux = flipped.bottom;
 		flipped.bottom = flipped.top;
 		flipped.top = aux;
+
 	}else if(flip == 2){
 		flipped.top = reverseSide(flipped.top);
 		flipped.bottom = reverseSide(flipped.bottom);
@@ -99,20 +103,84 @@ Tile getTileFlipped(Tile* tile, int flip){
 		flipped.left = reverseSide(flipped.right);
 		flipped.right = aux;
 	}
+
+	//TODO: This is broken
+	if (flip == 1 || flip == 3){
+		uint64 halfIndex = (CONTENT_LINE_SIZE / 2);
+		for(uint64 i = 0; i < halfIndex; i++){
+			ContentLine aux = tile->content[i];
+			tile->content[i] = tile->content[CONTENT_LINE_SIZE - 1 - i];
+			tile->content[CONTENT_LINE_SIZE - 1 - i] = aux;
+		}
+		//TODO: Treat case where CONTENT_LINE_SIZE is odd here if necessary
+	}
+	if (flip == 2 || flip == 3){
+		for(uint64 n = 0; n < CONTENT_LINE_SIZE; n++){
+			ContentLine line = 0;
+			for(uint64 i = 0; i < CONTENT_LINE_SIZE; i++){
+				line |= ((tile->content[n] >> i) & ((Side)1)) << (TILE_SIZE - 1 - i);
+			}
+			tile->content[n] = line;
+		}
+	}
+
+	return flipped;
+}
+
+Tile getTileFlippedDiagonally(Tile* tile){
+	Tile flipped = *tile;
+
+	Side aux = flipped.left;
+	flipped.left = flipped.top;
+	flipped.top = aux;
+	aux = flipped.right;
+	flipped.right = flipped.bottom;
+	flipped.bottom = aux;
+
+	//TODO: This is broken
+	ContentLine content[CONTENT_LINE_SIZE] = { 0 };
+	for(uint64 n = 0; n < CONTENT_LINE_SIZE; n++){
+		ContentLine line = 0;
+		for(uint64 i = 0; i < CONTENT_LINE_SIZE; i++){
+			line |= ((tile->content[i] >> (n)) & ((Side)1)) << i;
+		}
+		content[n] = line;
+	}
+
+	for (uint64 n = 0; n < CONTENT_LINE_SIZE; n++) {
+		flipped.content[n] = content[n];
+	}
+
 	return flipped;
 }
 
 Tile getTileRotated(Tile* tile, int rotation){
 	Tile rotated = *tile;
 	rotation = rotation % 4;
-	for(int i = 1; i < rotation; i++){
+	for(int i = 0; i < rotation; i++){
 		Side aux = rotated.right;
 		rotated.right = rotated.top;
 		Side aux2 = rotated.bottom;
 		rotated.bottom = reverseSide(aux);
 		rotated.top = reverseSide(rotated.left);
 		rotated.left = aux2;
+
+		//TODO: This is broken
+		ContentLine content[CONTENT_LINE_SIZE] = { 0 };
+		for(uint64 n = 0; n < CONTENT_LINE_SIZE; n++){
+			ContentLine line = 0;
+			for(uint64 i = 0; i < CONTENT_LINE_SIZE; i++){
+				//TODO: Check if this works
+				line |= ((tile->content[i] >> (CONTENT_LINE_SIZE - 1 - n)) & ((Side)1)) << i;
+			}
+			content[n] = line;
+		}
+
+		for (uint64 n = 0; n < CONTENT_LINE_SIZE; n++) {
+			rotated.content[n] = content[n];
+		}
 	}
+
 	return rotated;
 }
 
@@ -121,38 +189,16 @@ Tile getTileVariation(Tile* tile, int variation){
 	return getTileFlipped(&rotated, variation / 4);
 }
 
-bool searchTiles(List* list, uint64 x, uint64 y, Tile** square, uint64 squareSize){
-	uint64 listSize = list->size;
-	Tile firstTile = *list->start;
-	for(uint64 count = 0; count < listSize; count++){
-		Tile* tile = popTile(list);
-		if(count > 0 && tile->id == firstTile.id){
-			printf("Loop\n");
-			return false;
-		}
-		for (int i = 0; i < 16; i++) {
-			Tile flipped = getTileVariation(tile, i);
-
-			if (
-				(x == 0 || square[x - 1][y].right == flipped.left) &&
-				(y == 0 || square[x][y - 1].bottom == flipped.top)
-			) {
-				square[x][y] = flipped;
-
-				if (x == (squareSize - 1) && y == (squareSize - 1)) {
-					return true;
-				}
-
-				uint64 nextX = (x < (squareSize - 1)) ? (x + 1) : 0;
-				uint64 nextY = (nextX > 0) ? y : (y + 1);
-				if (searchTiles(list, nextX, nextY, square, squareSize)) {
-					return true;
-				}
-			}
-		}
-		pushTile(list, tile);
+void reverseTileArray(Tile* array, uint64 size){
+	uint64 halfIndex = size / 2;
+	for(uint64 i = 0; i < halfIndex; i++){
+		Tile aux = getTileFlipped(&array[i], 2);
+		array[i] = getTileFlipped(&array[size - 1 - i], 2);
+		array[size - 1 - i] = aux;
 	}
-	return false;
+	if(size % 2 == 1){
+		array[halfIndex] = getTileFlipped(&array[halfIndex], 2);
+	}
 }
 
 bool assembleBorder(List* corners, List* borders, Tile* borderArray, uint64 squareSize){
@@ -161,12 +207,13 @@ bool assembleBorder(List* corners, List* borders, Tile* borderArray, uint64 squa
 	for(uint64 n = 1; n < squareSize - 1; n++){
 		bool found = false;
 		for (Tile* tile = borders->start; tile; tile = tile->next){
-			for (int i = 0; i < 2; i++) {
+			for (int i = 0; i <= 2; i += 2) {
 				Tile flipped = getTileFlipped(tile, i);
 				if (borderArray[n - 1].right == flipped.left){
 					borderArray[n] = flipped;
-					removeTile(borders, tile);
+					removeTileFromList(borders, tile);
 					found = true;
+					numTiles++;
 					goto end;
 				}
 			}
@@ -180,11 +227,14 @@ bool assembleBorder(List* corners, List* borders, Tile* borderArray, uint64 squa
 		return false;
 	}
 	for (Tile* corner = corners->start; corner; corner = corner->next){
-		for (int i = 0; i < 16; i++) {
-			Tile flipped = getTileVariation(corner, i);
+		Tile flipped = getTileFlipped(corner, 2);
+		for (int i = 0; i < 2; i++) {
+			if (i == 1) {
+				flipped = getTileFlippedDiagonally(&flipped);
+			}
 			if (borderArray[squareSize - 2].right == flipped.left){
 				borderArray[squareSize - 1] = flipped;
-				removeTile(corners, corner);
+				removeTileFromList(corners, corner);
 				return true;
 			}
 		}
@@ -192,11 +242,120 @@ bool assembleBorder(List* corners, List* borders, Tile* borderArray, uint64 squa
 	return false;
 }
 
+void printSquareIds(Tile** square, uint64 squareSize){
+	for (uint64 y = 0; y < squareSize; y++) {
+		for (uint64 x = 0; x < squareSize; x++) {
+			Tile tile = square[y][x];
+			if(tile.id){
+				printf("%llu", tile.id);
+			} else {
+				printf("----");
+			}
+			if(x < squareSize - 1){
+				printf("|");
+			}
+		}
+		printf("\n");
+	}
+	printf("\n");
+}
+
+void printVerticalTileIds(Tile* vertical1, Tile* vertical2, uint64 squareSize){
+	for (uint64 y = 0; y < squareSize; y++) {
+		Tile tile1 = vertical1[y];
+		if(tile1.id){
+			printf("%llu", tile1.id);
+		} else {
+			printf("----");
+		}
+		printf("|----|");
+		Tile tile2 = vertical2[y];
+		if(tile2.id){
+			printf("%llu", tile2.id);
+		} else {
+			printf("----");
+		}
+		printf("\n");
+	}
+	printf("\n");
+}
+
+void printSquare(Tile** square, uint64 squareSize) {
+	for (uint64 y = 0; y < squareSize; y++) {
+		for (uint64 line = 0; line < TILE_SIZE; line++) {
+			for (uint64 x = 0; x < squareSize; x++) {
+				Tile tile = square[y][x];
+				
+				if(line == 0){
+					for (uint64 i = 0; i < TILE_SIZE; i++) {
+						bool filled = (tile.top >> i) & ((Side)1);
+						if (filled) printf("#");
+						else printf(".");
+					}
+				}else if(line == TILE_SIZE - 1){
+					for (uint64 i = 0; i < TILE_SIZE; i++) {
+						bool filled = (tile.bottom >> i) & ((Side)1);
+						if (filled) printf("#");
+						else printf(".");
+					}
+				}else{
+					bool filled = (tile.left >> line) & ((Side)1);
+					if (filled) printf("#");
+					else printf(".");
+					
+					for (uint64 i = 0; i < CONTENT_LINE_SIZE; i++){
+						bool filled = (tile.content[line - 1] >> i) & ((ContentLine)1);
+						if (filled) printf("#");
+						else printf(".");
+					}
+					
+					filled = (tile.right >> line) & ((Side)1);
+					if (filled) printf("#");
+					else printf(".");
+				}
+				printf(" ");
+			}
+			printf("\n");
+		}
+		printf("\n");
+	}
+}
+
 inline uint64 squareRoot(uint64 value) {
 	return (uint64)_mm_cvtss_f32(_mm_sqrt_ss(_mm_set_ss((float)value)));
 }
 
 int main(){
+	Tile tile = { 0 };
+	for (uint64 i = 0; i < (CONTENT_LINE_SIZE / 2); i++){
+		tile.content[i] = 15;
+	}
+
+	Tile* pointer = &tile;
+
+	printSquare(&pointer, 1);
+
+	printf("Rotations:\n");
+	for (int i = 0; i < 4; i++){
+		Tile rotated = getTileRotated(&tile, i);
+		pointer = &rotated;
+		printSquare(&pointer, 1);
+	}
+
+	/*printf("Diagonal:\n");
+	Tile diagonal = getTileFlippedDiagonally(&tile);
+	pointer = &diagonal;
+	printSquare(&pointer, 1);
+
+	printf("Flips:\n");
+	for (int i = 0; i < 4; i++){
+		Tile flipped = getTileFlipped(&tile, i);
+		pointer = &flipped;
+		printSquare(&pointer, 1);
+	}*/
+}
+
+/*int main(){
 	String text = readFile("input.txt");
 	
 	char* position = text.data;
@@ -213,8 +372,7 @@ int main(){
 	
 	//Parse each tile
 	uint64 tileCont = 0;
-	uint64 tileBytes = sizeof(Tile) * numTiles;
-	Tile* tiles = (Tile*) malloc(tileBytes);
+	Tile* tiles = (Tile*) malloc(sizeof(Tile) * numTiles);
 	
 	while((position - text.data) < text.size){
 		while (!strings_equal(position, tileStart)) position++;
@@ -240,7 +398,15 @@ int main(){
 					}
 				}
 			} else {
-				position += TILE_SIZE;
+				position++;
+				ContentLine line = 0;
+				for(uint64 pos = 0; pos < CONTENT_LINE_SIZE; pos++){
+					if (*(position++) == '#') {
+						line |= ((ContentLine)1) << pos;
+					}
+				}
+				tile.content[height - 1] = line;
+				position++;
 			}
 			
 			if(*(position - 1) == '#') tile.right |= ((Side)1) << height;	
@@ -263,6 +429,11 @@ int main(){
 
 	List borderList = { 0 };
 	List cornerList = { 0 };
+
+	List tilesList;
+	tilesList.size = numTiles;
+	tilesList.start = tiles;
+	tilesList.end = &tiles[numTiles - 1];
 
 	for (uint64 n = 0; n < numTiles; n++) {
 		Tile* tile = &tiles[n];
@@ -306,17 +477,17 @@ int main(){
 			if(!rightFound){
 				*tile = getTileFlipped(tile, 2);
 			}
-			removeTile(tile);
+			removeTileFromList(&tilesList, tile);
 			pushTile(&cornerList, tile);
 		} else if (borderList.size < borderTilesMax && sum == 3){ //Borders
 			if(!bottomFound){
-				*tile = getTileFlipped(tile, 2);
+				*tile = getTileFlipped(tile, 1);
 			}else if(!leftFound){
 				*tile = getTileRotated(tile, 1);
 			}else if(!rightFound){
 				*tile = getTileRotated(tile, 3);
 			}
-			removeTile(tile);
+			removeTileFromList(&tilesList, tile);
 			pushTile(&borderList, tile);
 		}
 
@@ -328,7 +499,7 @@ int main(){
 	if (cornerList.size == 0){
 		printf("No corners found\n");
 		return -1;
-	} else if (cornerList.size < 4) {
+	} else if (cornerList.size != 4) {
 		printf("Only %llu corners found\n", cornerList.size);
 		return -2;
 	} else if (borderList.size == 0){
@@ -339,35 +510,128 @@ int main(){
 		return -4;
 	}
 
-	Tile* squareMemory = (Tile*) malloc(tileBytes);
+	uint64 numCornersFlipped = 0;
+	Tile cornersFlipped[4];
+	for (Tile* corner = cornerList.start; corner; corner = corner->next){
+		if (numCornersFlipped >= 4){
+			printf("Here's the problem, too many corners!\n");
+			return -5;
+		}
+
+		cornersFlipped[numCornersFlipped] = getTileFlippedDiagonally(corner);
+		if(numCornersFlipped > 0){
+			cornersFlipped[numCornersFlipped].prev = &cornersFlipped[numCornersFlipped - 1];
+			cornersFlipped[numCornersFlipped - 1].next = &cornersFlipped[numCornersFlipped];
+		} else {
+			cornersFlipped[numCornersFlipped].prev = 0;
+		}
+		cornersFlipped[numCornersFlipped].next = 0;
+		numCornersFlipped++;
+	}
+	
+	List cornersFlippedList;
+	cornersFlippedList.size = 4;
+	cornersFlippedList.start = &cornersFlipped[0];
+	cornersFlippedList.end = &cornersFlipped[3];
+	
+
+	Tile* squareMemory = (Tile*) calloc(numTiles, sizeof(Tile));
 	Tile** square = (Tile**) malloc(squareSize * sizeof(Tile*));
 	for(uint64 i = 0; i < squareSize; i++){
 		square[i] = &squareMemory[i * squareSize];
 	}
 
-	//Assemble the border
+	uint64 lastPos = squareSize - 1;
+
+	//Assemble the borders
 	if(!assembleBorder(&cornerList, &borderList, square[0], squareSize)){
 		printf("Couldn't assemble top border\n");
-		return -5;
-	}
-
-	if(!assembleBorder(&cornerList, &borderList, square[squareSize - 1], squareSize)){
-		printf("Couldn't assemble bottom border\n");
 		return -6;
 	}
 
-	/*//Search for a solution
-	List list;
-	list.size = numTiles;
-	list.start = tiles;
-	list.end = &tiles[numTiles - 1];
+	if(!assembleBorder(&cornerList, &borderList, square[lastPos], squareSize)){
+		printf("Couldn't assemble bottom border\n");
+		return -7;
+	}
 
-	if(searchTiles(&list, 0, 0, square, squareSize)){
-		uint64 end = squareSize - 1;
-		uint64 result = square[0][0].id * square[0][end].id * square[end][0].id * square[end][end].id;
-		printf("Corners multiplied: %llu\n", result);
-	} else {
-		printf("No combinations found\n");
-	}*/
+	for(uint64 i = 0; i < squareSize; i++){
+		square[lastPos][i] = getTileFlipped(&(square[lastPos][i]), 1);
+	}
+
+	//printSquareIds(square, squareSize);
+
+	Tile* verticalBorder1 = (Tile*) malloc(sizeof(Tile) * squareSize);
+	if(!assembleBorder(&cornersFlippedList, &borderList, verticalBorder1, squareSize)){
+		printf("Couldn't assemble the first vertical border\n");
+		return -8;
+	}
+	
+	Tile* verticalBorder2 = (Tile*) malloc(sizeof(Tile) * squareSize);
+	if(!assembleBorder(&cornersFlippedList, &borderList, verticalBorder2, squareSize)){
+		printf("Couldn't assemble the second vertical border\n");
+		return -9;
+	}
+
+	//printVerticalTileIds(verticalBorder1, verticalBorder2, squareSize);
+
+	if(square[0][lastPos].id == verticalBorder1[0].id){
+		reverseTileArray(square[0], squareSize);
+	}
+	if(square[0][0].id != verticalBorder1[0].id){
+		reverseTileArray(verticalBorder1, squareSize);
+	}
+	if(square[lastPos][lastPos].id == verticalBorder1[lastPos].id){
+		reverseTileArray(square[lastPos], squareSize);
+	}
+	if(square[0][lastPos].id != verticalBorder2[0].id){
+		reverseTileArray(verticalBorder2, squareSize);
+	}
+
+	//printSquareIds(square, squareSize);
+	//printVerticalTileIds(verticalBorder1, verticalBorder2, squareSize);
+
+	for(uint64 i = 1; i < lastPos; i++){
+		square[i][0] = getTileFlippedDiagonally(&(verticalBorder1[i]));
+		square[i][lastPos] = getTileFlippedDiagonally(&(verticalBorder2[i]));
+		square[i][lastPos] = getTileFlipped(&(square[i][lastPos]), 2);
+	}
+
+	//printSquareIds(square, squareSize);
+	//printSquare(square, squareSize);
+
+	for(uint64 x = 1; x < lastPos; x++){
+		for(uint64 y = 1; y < lastPos; y++){
+			bool found = false;
+			for (Tile* tile = tilesList.start; tile; tile = tile->next){
+				for (int i = 0; i < 16; i++) {
+					Tile flipped = getTileVariation(tile, i);
+					Tile* pointer = &flipped;
+
+					if ((flipped.left == (square[y][x - 1].right)) && (flipped.top == (square[y - 1][x].bottom))){
+						if(x + 1 == lastPos && flipped.right != square[y][lastPos].left){
+							continue;
+						}
+						if(y + 1 == lastPos && flipped.bottom != square[lastPos][x].top){
+							continue;
+						}
+
+						square[y][x] = flipped;
+						found = true;
+						removeTileFromList(&tilesList, tile);
+						goto endSearch;
+					}
+				}
+			}
+			endSearch:
+			if(!found){
+				printf("No tile found for X: %llu / Y: %llu\n", x, y);
+				return -10;
+			}
+		}
+	}
+
+	printSquare(square, squareSize);
+
+	printf("Finished\n");
 	return 0;
-}
+}*/

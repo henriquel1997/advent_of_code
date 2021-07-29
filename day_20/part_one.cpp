@@ -54,7 +54,7 @@ Tile getTileFlipped(Tile* tile, int flip){
 Tile getTileRotated(Tile* tile, int rotation){
 	Tile rotated = *tile;
 	rotation = rotation % 4;
-	for(int i = 1; i < rotation; i++){
+	for(int i = 0; i < rotation; i++){
 		Side aux = rotated.right;
 		rotated.right = rotated.top;
 		Side aux2 = rotated.bottom;

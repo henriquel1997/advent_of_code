@@ -104,13 +104,12 @@ Tile getTileFlipped(Tile* tile, int flip){
 		flipped.right = aux;
 	}
 
-	//TODO: This is broken
 	if (flip == 1 || flip == 3){
 		uint64 halfIndex = (CONTENT_LINE_SIZE / 2);
 		for(uint64 i = 0; i < halfIndex; i++){
-			ContentLine aux = tile->content[i];
-			tile->content[i] = tile->content[CONTENT_LINE_SIZE - 1 - i];
-			tile->content[CONTENT_LINE_SIZE - 1 - i] = aux;
+			ContentLine aux = flipped.content[i];
+			flipped.content[i] = flipped.content[CONTENT_LINE_SIZE - 1 - i];
+			flipped.content[CONTENT_LINE_SIZE - 1 - i] = aux;
 		}
 		//TODO: Treat case where CONTENT_LINE_SIZE is odd here if necessary
 	}
@@ -118,9 +117,9 @@ Tile getTileFlipped(Tile* tile, int flip){
 		for(uint64 n = 0; n < CONTENT_LINE_SIZE; n++){
 			ContentLine line = 0;
 			for(uint64 i = 0; i < CONTENT_LINE_SIZE; i++){
-				line |= ((tile->content[n] >> i) & ((Side)1)) << (TILE_SIZE - 1 - i);
+				line |= ((flipped.content[n] >> i) & ((ContentLine)1)) << (CONTENT_LINE_SIZE - 1 - i);
 			}
-			tile->content[n] = line;
+			flipped.content[n] = line;
 		}
 	}
 
@@ -137,12 +136,11 @@ Tile getTileFlippedDiagonally(Tile* tile){
 	flipped.right = flipped.bottom;
 	flipped.bottom = aux;
 
-	//TODO: This is broken
 	ContentLine content[CONTENT_LINE_SIZE] = { 0 };
 	for(uint64 n = 0; n < CONTENT_LINE_SIZE; n++){
 		ContentLine line = 0;
 		for(uint64 i = 0; i < CONTENT_LINE_SIZE; i++){
-			line |= ((tile->content[i] >> (n)) & ((Side)1)) << i;
+			line |= ((tile->content[i] >> (n)) & ((ContentLine)1)) << i;
 		}
 		content[n] = line;
 	}
@@ -165,13 +163,13 @@ Tile getTileRotated(Tile* tile, int rotation){
 		rotated.top = reverseSide(rotated.left);
 		rotated.left = aux2;
 
-		//TODO: This is broken
 		ContentLine content[CONTENT_LINE_SIZE] = { 0 };
 		for(uint64 n = 0; n < CONTENT_LINE_SIZE; n++){
 			ContentLine line = 0;
 			for(uint64 i = 0; i < CONTENT_LINE_SIZE; i++){
-				//TODO: Check if this works
-				line |= ((tile->content[i] >> (CONTENT_LINE_SIZE - 1 - n)) & ((Side)1)) << i;
+				ContentLine otherLine = rotated.content[CONTENT_LINE_SIZE - 1 - i];
+				ContentLine bit = (otherLine >> (n)) & ((ContentLine)1);
+				line |= bit << i;
 			}
 			content[n] = line;
 		}
@@ -187,6 +185,39 @@ Tile getTileRotated(Tile* tile, int rotation){
 Tile getTileVariation(Tile* tile, int variation){
 	Tile rotated = getTileRotated(tile, variation % 4);
 	return getTileFlipped(&rotated, variation / 4);
+}
+
+void getImageFlipped(bool** image, bool** output, uint64 imageSize, int flip){
+	if (flip == 1 || flip == 3){
+		for (uint64 x = 0; x < imageSize; x++) {
+			for (uint64 y = 0; y < imageSize; y++) {
+				output[x][imageSize - 1 - y] = image[x][y];
+			}
+		}
+	}
+	if (flip == 2 || flip == 3){
+		for (uint64 x = 0; x < imageSize; x++) {
+			for (uint64 y = 0; y < imageSize; y++) {
+				output[imageSize - 1 - x][y] = image[x][y];
+			}
+		}
+	}
+}
+
+void getImageRotated(bool** image, bool** output, uint64 imageSize, int rotation){
+	rotation = rotation % 4;
+	for (int i = 0; i < rotation; i++) {
+		for (uint64 x = 0; x < imageSize; x++) {
+			for (uint64 y = 0; y < imageSize; y++) {
+				output[y][imageSize - 1 - x] = image[x][y];
+			}
+		}
+	}
+}
+
+void getImageVariation(bool** image, bool** aux, bool** output, uint64 imageSize, int variation){
+	getImageRotated(image, aux, imageSize, variation % 4);
+	getImageFlipped(aux, output, imageSize, variation / 4);
 }
 
 void reverseTileArray(Tile* array, uint64 size){
@@ -242,120 +273,11 @@ bool assembleBorder(List* corners, List* borders, Tile* borderArray, uint64 squa
 	return false;
 }
 
-void printSquareIds(Tile** square, uint64 squareSize){
-	for (uint64 y = 0; y < squareSize; y++) {
-		for (uint64 x = 0; x < squareSize; x++) {
-			Tile tile = square[y][x];
-			if(tile.id){
-				printf("%llu", tile.id);
-			} else {
-				printf("----");
-			}
-			if(x < squareSize - 1){
-				printf("|");
-			}
-		}
-		printf("\n");
-	}
-	printf("\n");
-}
-
-void printVerticalTileIds(Tile* vertical1, Tile* vertical2, uint64 squareSize){
-	for (uint64 y = 0; y < squareSize; y++) {
-		Tile tile1 = vertical1[y];
-		if(tile1.id){
-			printf("%llu", tile1.id);
-		} else {
-			printf("----");
-		}
-		printf("|----|");
-		Tile tile2 = vertical2[y];
-		if(tile2.id){
-			printf("%llu", tile2.id);
-		} else {
-			printf("----");
-		}
-		printf("\n");
-	}
-	printf("\n");
-}
-
-void printSquare(Tile** square, uint64 squareSize) {
-	for (uint64 y = 0; y < squareSize; y++) {
-		for (uint64 line = 0; line < TILE_SIZE; line++) {
-			for (uint64 x = 0; x < squareSize; x++) {
-				Tile tile = square[y][x];
-				
-				if(line == 0){
-					for (uint64 i = 0; i < TILE_SIZE; i++) {
-						bool filled = (tile.top >> i) & ((Side)1);
-						if (filled) printf("#");
-						else printf(".");
-					}
-				}else if(line == TILE_SIZE - 1){
-					for (uint64 i = 0; i < TILE_SIZE; i++) {
-						bool filled = (tile.bottom >> i) & ((Side)1);
-						if (filled) printf("#");
-						else printf(".");
-					}
-				}else{
-					bool filled = (tile.left >> line) & ((Side)1);
-					if (filled) printf("#");
-					else printf(".");
-					
-					for (uint64 i = 0; i < CONTENT_LINE_SIZE; i++){
-						bool filled = (tile.content[line - 1] >> i) & ((ContentLine)1);
-						if (filled) printf("#");
-						else printf(".");
-					}
-					
-					filled = (tile.right >> line) & ((Side)1);
-					if (filled) printf("#");
-					else printf(".");
-				}
-				printf(" ");
-			}
-			printf("\n");
-		}
-		printf("\n");
-	}
-}
-
 inline uint64 squareRoot(uint64 value) {
 	return (uint64)_mm_cvtss_f32(_mm_sqrt_ss(_mm_set_ss((float)value)));
 }
 
 int main(){
-	Tile tile = { 0 };
-	for (uint64 i = 0; i < (CONTENT_LINE_SIZE / 2); i++){
-		tile.content[i] = 15;
-	}
-
-	Tile* pointer = &tile;
-
-	printSquare(&pointer, 1);
-
-	printf("Rotations:\n");
-	for (int i = 0; i < 4; i++){
-		Tile rotated = getTileRotated(&tile, i);
-		pointer = &rotated;
-		printSquare(&pointer, 1);
-	}
-
-	/*printf("Diagonal:\n");
-	Tile diagonal = getTileFlippedDiagonally(&tile);
-	pointer = &diagonal;
-	printSquare(&pointer, 1);
-
-	printf("Flips:\n");
-	for (int i = 0; i < 4; i++){
-		Tile flipped = getTileFlipped(&tile, i);
-		pointer = &flipped;
-		printSquare(&pointer, 1);
-	}*/
-}
-
-/*int main(){
 	String text = readFile("input.txt");
 	
 	char* position = text.data;
@@ -558,8 +480,6 @@ int main(){
 		square[lastPos][i] = getTileFlipped(&(square[lastPos][i]), 1);
 	}
 
-	//printSquareIds(square, squareSize);
-
 	Tile* verticalBorder1 = (Tile*) malloc(sizeof(Tile) * squareSize);
 	if(!assembleBorder(&cornersFlippedList, &borderList, verticalBorder1, squareSize)){
 		printf("Couldn't assemble the first vertical border\n");
@@ -571,8 +491,6 @@ int main(){
 		printf("Couldn't assemble the second vertical border\n");
 		return -9;
 	}
-
-	//printVerticalTileIds(verticalBorder1, verticalBorder2, squareSize);
 
 	if(square[0][lastPos].id == verticalBorder1[0].id){
 		reverseTileArray(square[0], squareSize);
@@ -587,17 +505,11 @@ int main(){
 		reverseTileArray(verticalBorder2, squareSize);
 	}
 
-	//printSquareIds(square, squareSize);
-	//printVerticalTileIds(verticalBorder1, verticalBorder2, squareSize);
-
 	for(uint64 i = 1; i < lastPos; i++){
 		square[i][0] = getTileFlippedDiagonally(&(verticalBorder1[i]));
 		square[i][lastPos] = getTileFlippedDiagonally(&(verticalBorder2[i]));
 		square[i][lastPos] = getTileFlipped(&(square[i][lastPos]), 2);
 	}
-
-	//printSquareIds(square, squareSize);
-	//printSquare(square, squareSize);
 
 	for(uint64 x = 1; x < lastPos; x++){
 		for(uint64 y = 1; y < lastPos; y++){
@@ -630,8 +542,94 @@ int main(){
 		}
 	}
 
-	printSquare(square, squareSize);
+	const uint64 seaMonsterWidth = 20;
+	const uint64 seaMonsterHeight = 3;
+	bool seaMonster [seaMonsterHeight][seaMonsterWidth] = { 0 };
+	seaMonster[0][18] = true;
+	seaMonster[1][0] = true;
+	seaMonster[1][5] = true;
+	seaMonster[1][6] = true;
+	seaMonster[1][11] = true;
+	seaMonster[1][12] = true;
+	seaMonster[1][17] = true;
+	seaMonster[1][18] = true;
+	seaMonster[1][19] = true;
+	seaMonster[2][1] = true;
+	seaMonster[2][4] = true;
+	seaMonster[2][7] = true;
+	seaMonster[2][10] = true;
+	seaMonster[2][13] = true;
+	seaMonster[2][16] = true;
+	
+	uint64 imageSize = squareSize * CONTENT_LINE_SIZE;
+	bool* imageMemory = (bool*) malloc(imageSize * imageSize * sizeof(bool));
+	bool** image = (bool**) malloc(imageSize * sizeof(bool*));
+	for(uint64 i = 0; i < imageSize; i++){
+		image[i] = &imageMemory[i * imageSize];
+	}
 
-	printf("Finished\n");
-	return 0;
-}*/
+	uint64 waterCount = 0;
+	for (uint64 y = 0; y < squareSize; y++) {
+		for (uint64 line = 0; line < CONTENT_LINE_SIZE; line++) {
+			for (uint64 x = 0; x < squareSize; x++) {
+				Tile tile = square[y][x];
+
+				for (uint64 i = 0; i < CONTENT_LINE_SIZE; i++){
+					bool filled = (tile.content[line] >> i) & ((ContentLine)1);
+					uint64 imageX = (x * CONTENT_LINE_SIZE) + i;
+					uint64 imageY = (y * CONTENT_LINE_SIZE) + line;
+					image[imageX][imageY] = filled;
+					if (filled) waterCount++;
+				}
+			}
+		}
+	}
+
+	bool* auxMemory = (bool*) malloc(imageSize * imageSize * sizeof(bool));
+	bool** aux = (bool**) malloc(imageSize * sizeof(bool*));
+	for(uint64 i = 0; i < imageSize; i++){
+		aux[i] = &auxMemory[i * imageSize];
+	}
+
+	bool* outputMemory = (bool*) malloc(imageSize * imageSize * sizeof(bool));
+	bool** output = (bool**) malloc(imageSize * sizeof(bool*));
+	for(uint64 i = 0; i < imageSize; i++){
+		output[i] = &outputMemory[i * imageSize];
+	}
+
+	printf("Total water count: %llu\n", waterCount);
+	for(int i = 0; i < 16; i++){
+		getImageVariation(image, aux, output, imageSize, i);
+		bool** temp = image;
+		image = output;
+		output = temp;
+
+		uint64 seaMonsterCount = 0;
+		for(uint64 y = 0; y < (imageSize - seaMonsterHeight); y++){
+			for(uint64 x = 0; x < (imageSize - seaMonsterWidth); x++){
+				bool found = true;
+				for(uint64 seaMonsterY = 0; seaMonsterY < seaMonsterHeight; seaMonsterY++){
+					for(uint64 seaMonsterX = 0; seaMonsterX < seaMonsterWidth; seaMonsterX++){
+						if(seaMonster[seaMonsterY][seaMonsterX] && !image[y + seaMonsterY][x + seaMonsterX]){
+							found = false;
+							goto endSeaMonsterSearch;
+						}
+					}
+				}
+				endSeaMonsterSearch:
+				if (found){
+					seaMonsterCount++;
+				}
+			}
+		}
+
+		if(seaMonsterCount > 0){
+			printf("%llu sea monsters found\n", seaMonsterCount);
+			printf("%llu waters free\n", waterCount - (15 * seaMonsterCount));
+			return 0;
+		}
+	}
+
+	printf("No sea monsters found\n");
+	return -1000;
+}

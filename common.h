@@ -54,6 +54,10 @@ bool strings_equal(String str1, const char* str2){
     return strings_equal(str1.data, (char*)str2, constLength);
 }
 
+bool strings_equal_not_const(String str1, char* str2){
+	return strings_equal(str1.data, (char*)str2, str1.size);
+}
+
 bool strings_equal(String str1, String str2){
     if(str1.size != str2.size){
         return false;

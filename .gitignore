@@ -3,5 +3,6 @@
 *.pdb
 *.out
 *.obj
+*.dSYM
 .DS_Store
 .vscode/

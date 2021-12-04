@@ -3,6 +3,7 @@
 #define MAX_INGREDIENTS_PER_FOOD 100
 #define MAX_ALLERGENS_PER_FOOD 30
 struct Food {
+	uint64 id;
 	uint64 numIngredients;
 	uint64 ingredients[MAX_INGREDIENTS_PER_FOOD];
 	uint64 numAllergens;
@@ -33,6 +34,7 @@ int main(){
 		}
 
 		Food food = { 0 };
+		food.id = totalFoods;
 
 		//For some reason this is way slower than the parsers in the other days, 
 		//but it still works, maybe it would be interesting to profile this.
@@ -102,6 +104,8 @@ int main(){
 				while(*position == ',' || *position == ' ' || *position == ')')
 					position++;
 				
+				if (*position == '\r') position++;;
+
 				food.allergens[food.numAllergens++] = allergenIndex;
 			}
 		}
@@ -116,8 +120,7 @@ int main(){
 		Food food = foods[i];
 		for (uint64 j = 0; j < food.numIngredients; j++) {
 			uint64 ingredientId = food.ingredients[j];
-			String ingredient = ingredients[ingredientId];
-			printf("%.*s(%llu) ", (int)ingredient.size, ingredient.data, ingredientId);
+			printf("(%llu) ", ingredientId);
 		}
 		if(food.numAllergens > 0){
 			printf("(contains ");
@@ -138,7 +141,7 @@ int main(){
 	//Searching for ingredient-allergen matches
 	uint64 allergensFound = 0;
 	int64 ingredientForAllergenId[MAX_INGREDIENTS];
-	for(uint64 i = 0; i < MAX_INGREDIENTS; i++) ingredientForAllergenId[i] = -1;
+	for(uint64 i = 0; i < totalAllergens; i++) ingredientForAllergenId[i] = -1;
 
 	while(allergensFound < totalAllergens){
 		uint64 initialAllergensFound = allergensFound;
@@ -164,7 +167,7 @@ int main(){
 						Food other = foods[f];
 						bool containsSameAllergen = false;
 						for (uint64 j = 0; j < other.numAllergens; j++) {
-							if(food.allergens[j] == allergenId){
+							if(other.allergens[j] == allergenId){
 								containsSameAllergen = true;
 								break;
 							}
@@ -188,10 +191,23 @@ int main(){
 				}
 
 				if(numFoodsWithSameAllergen > 0){
-					for (uint64 j = 0; j < totalIngredients; j++){
-						if(timesEachIngredientAppeared[j] == numFoodsWithSameAllergen){
+					for (int64 ingId = 0; ingId < totalIngredients; ingId++){
+						if(timesEachIngredientAppeared[ingId] == numFoodsWithSameAllergen){
+							bool isIngredientAvailable = true;
+							for (uint64 alId = 0; alId < totalAllergens; alId++){
+								if(ingredientForAllergenId[alId] == ingId){
+									isIngredientAvailable = false;
+									break;
+								}
+							}
+							if (!isIngredientAvailable) continue;
+
 							allergensFound++;
-							ingredientForAllergenId[allergenId] = j;
+							ingredientForAllergenId[allergenId] = ingId;
+
+							String ingredient = ingredients[ingId];
+							String allergen = allergens[allergenId];
+							printf("Ingredient %.*s(%llu) has the allergen %.*s(%llu)\n", (int)ingredient.size, ingredient.data, ingId, (int)allergen.size, allergen.data, allergenId);
 							break;
 						}
 					}

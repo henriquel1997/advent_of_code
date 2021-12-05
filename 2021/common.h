@@ -9,6 +9,8 @@
 
 #define abs(x) ((x) >= 0 ? (x) : -(x))
 #define sign(x) ((x) >= 0 ? (1) : -1)
+#define max(x, y) ((x) > (y) ? (x) : (y))
+#define min(x, y) ((x) < (y) ? (x) : (y))
 
 struct String {
     long size;

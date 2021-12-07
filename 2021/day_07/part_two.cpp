@@ -30,10 +30,11 @@ int main(){
         uint64 total_fuel = 0;
         for(uint64 j = 0; j < crab_count; j++){
             int64 steps_to_pos = abs(positions[j] - i);
-            uint64 fuel_cost = 0;
+            uint64 fuel_cost = ((steps_to_pos * steps_to_pos) + steps_to_pos) / 2;
+            /*uint64 fuel_cost = 0;
             for(uint64 k = 1; k <= steps_to_pos; k++){
                 fuel_cost += k;
-            }
+            }*/
             total_fuel += fuel_cost;
             if(total_fuel > least_fuel) break;
         }

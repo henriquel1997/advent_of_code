@@ -31,6 +31,8 @@ int main(){
         for(uint64 j = 0; j < crab_count; j++){
             int64 steps_to_pos = abs(positions[j] - i);
             uint64 fuel_cost = ((steps_to_pos * steps_to_pos) + steps_to_pos) / 2;
+            //The line of code above is equivalent to this loop
+            //https://math.stackexchange.com/a/593320
             /*uint64 fuel_cost = 0;
             for(uint64 k = 1; k <= steps_to_pos; k++){
                 fuel_cost += k;

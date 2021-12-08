@@ -149,16 +149,7 @@ int main(){
             for(int i = 0; i < 10; i++){
                 Digit digit = digits[i];
                 if(currentDigit.segmentCount == digit.segmentCount){
-                    int equalSegments = 0;
-                    for(int pos = 0; pos < digit.segmentCount; pos++){
-                        for(int curPos = 0; curPos < currentDigit.segmentCount; curPos++){
-                            if(digit.segments[pos] == currentDigit.segments[curPos]){
-                                equalSegments++;
-                                break;
-                            }
-                        }
-                    }
-                    if(equalSegments == digit.segmentCount){
+                    if(getNumberOfSegmentsInCommon(currentDigit, digit) == digit.segmentCount){
                         number = (number * 10) + i;
                         break;
                     }

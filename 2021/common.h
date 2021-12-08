@@ -113,3 +113,7 @@ bool isWhiteSpace(char c){
 void eatWhiteSpace(char** text){
 	while (isWhiteSpace(**text)) (*text)++;
 }
+
+bool isEndOfLine(char c){
+    return c == '\r' || c == '\n';
+}

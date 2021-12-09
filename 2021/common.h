@@ -95,6 +95,7 @@ TextFileInfo getTextFileInfo(String text){
 			lineStart = lineEnd + 1;
 		}
 	}
+    if(text.data[text.size - 1] != '\n') numberOfLines++;
 	return {numberOfLines, maxLineSize};
 }
 

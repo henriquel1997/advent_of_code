@@ -107,6 +107,10 @@ bool isLetter(char c){
     return c >= 'a' && c <= 'z';
 }
 
+bool isLetterUpperCase(char c){
+    return c >= 'A' && c <= 'Z';
+}
+
 bool isWhiteSpace(char c){
 	return c == ' ' || c == '\t';
 }

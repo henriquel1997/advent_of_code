@@ -15,7 +15,7 @@ char hex_digit_to_bits(char hex){
 
 //From https://stackoverflow.com/a/30590727
 bool get_bit(char A[], uint64 k){
-    return A[k/8] & 1 << (7 - (k%8));  // Get the bit at the k-th position in A[i]
+    return A[k/8] & 1 << (7 - (k%8));
 }
 
 uint64 get_bits(char A[], uint64 pos, uint64 num_bits){
@@ -29,24 +29,21 @@ uint64 get_bits(char A[], uint64 pos, uint64 num_bits){
 
 uint64 parse_packet(uint64* current_bit, char bytes[]){
     packet_starts[num_starts++] = *current_bit;
-    uint64 version_total = get_bits(bytes, *current_bit, 3);
-    printf("Version %llu\n", version_total);
+    
+	 uint64 version_total = get_bits(bytes, *current_bit, 3);
     *current_bit += 3;
     uint64 packet_type_id = get_bits(bytes, *current_bit, 3);
-    printf("Packet Type ID: %llu\n", packet_type_id);
     *current_bit += 3;
     
     if(packet_type_id == 4){
         //Literal value
         while(get_bit(bytes, *current_bit)) *current_bit += 5;
         *current_bit += 5;
-        while(*current_bit % 8 != 0) *current_bit += 1;
     }else{
         //Operator
         if(get_bit(bytes, *current_bit) == 0){
             *current_bit += 1;
             uint64 sub_packets_size = get_bits(bytes, *current_bit, 15);
-            //printf("Sub packets size: %llu\n", sub_packets_size);
             *current_bit += 15;
 
             uint64 packet_start_bit = *current_bit;
@@ -56,7 +53,6 @@ uint64 parse_packet(uint64* current_bit, char bytes[]){
         }else{
             *current_bit += 1;
             uint64 num_sub_packets = get_bits(bytes, *current_bit, 11);
-            printf("Num sub packets: %llu\n", num_sub_packets);
             *current_bit += 11;
 
             for(uint64 i = 0; i < num_sub_packets; i++){
@@ -65,7 +61,6 @@ uint64 parse_packet(uint64* current_bit, char bytes[]){
         }
     }
 
-    printf("End: %llu\n", *current_bit);
     packet_ends[num_ends++] = *current_bit;
     return version_total;
 }
@@ -90,10 +85,14 @@ int main(){
         bytes[num_bytes++] = result;
     }
 
-    uint64 version_sum = 0;
-    for(uint64 current_bit = 0; current_bit < (num_bytes * 8);){
-        version_sum += parse_packet(&current_bit, bytes);
-    }
+	for(uint64 current_bit = 0; current_bit < (num_bytes * 8); current_bit++){
+		printf("%i", get_bit(bytes, current_bit));
+		if ((current_bit + 1) % 8 == 0) printf("|");
+	}
+	printf("\n");
+
+	uint64 current_bit = 0;
+	uint64 version_sum = parse_packet(&current_bit, bytes);
 
     uint64 current_start = 0;
     uint64 current_end = 0;

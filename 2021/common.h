@@ -12,6 +12,16 @@
 #define max(x, y) ((x) > (y) ? (x) : (y))
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
+#ifndef LLONG_MIN
+    #define LLONG_MIN -9223372036854775807
+#endif
+#ifndef LLONG_MAX
+    #define LLONG_MAX 9223372036854775807
+#endif
+#ifndef ULLONG_MAX
+    #define ULLONG_MAX 18446744073709551615
+#endif
+
 struct String {
     long size;
     char* data;
@@ -121,4 +131,10 @@ void eatWhiteSpace(char** text){
 
 bool isEndOfLine(char c){
     return c == '\r' || c == '\n';
+}
+
+uint64 getLineSize(char* position){
+    char* lineStart = position;
+    while(!isEndOfLine(*position)) position++;
+    return (uint64)position - (uint64)lineStart;
 }

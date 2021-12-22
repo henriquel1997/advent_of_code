@@ -19,7 +19,7 @@
     #define LLONG_MAX 9223372036854775807
 #endif
 #ifndef ULLONG_MAX
-    #define ULLONG_MAX 18446744073709551615
+    #define ULLONG_MAX 18446744073709551615ULL
 #endif
 
 struct String {
@@ -75,6 +75,10 @@ bool strings_equal(String str1, String str2){
         return false;
     }
     return strings_equal(str1.data, str2.data, str1.size);
+}
+
+bool startsWith(char* str1, const char* str2){
+	return strings_equal(str1, str2);
 }
 
 bool startsWith(String str1, const char* str2){

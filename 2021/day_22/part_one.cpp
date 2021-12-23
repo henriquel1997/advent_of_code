@@ -107,7 +107,7 @@ int main(){
         printf("Num cubes: %llu\n", num_cubes);
 
         end:
-        while(!isEndOfLine(*position)) position++;
+		while(*position != '\n') position++;
         position++;
     }
 

@@ -152,7 +152,7 @@ uint64 run_program_refactored(uint64 input) {
 	int64 z = 0;
 
 	for (int i = 0; i < 14; i++) {
-		if (!reverse) break;
+
 		w = reverse % 10;
 		reverse /= 10;
 

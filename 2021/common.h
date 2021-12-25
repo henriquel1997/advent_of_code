@@ -38,11 +38,20 @@ String readFile(const char* fileName){
     fclose(f);
 
     string[fsize] = 0;
-    return (String){fsize, string};
+
+#ifdef _MSC_VER
+    return {fsize, string};
+#else
+	return (String){fsize, string};
+#endif
 }
 
 String stringFromConstChar(const char* text){
+#ifdef _MSC_VER
+	return {(long)strlen(text), (char*)text};
+#else
 	return (String){(long)strlen(text), (char*)text};
+#endif
 }
 
 bool strings_equal(char* str1, char* str2, int length){
@@ -110,7 +119,12 @@ TextFileInfo getTextFileInfo(String text){
 		}
 	}
     if(text.data[text.size - 1] != '\n') numberOfLines++;
+
+#ifdef _MSC_VER
+	return {numberOfLines, maxLineSize};
+#else
 	return (TextFileInfo){numberOfLines, maxLineSize};
+#endif
 }
 
 bool isDigit(char c){

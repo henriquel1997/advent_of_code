@@ -37,6 +37,10 @@ main :: proc() {
 
     walked_positions, initial_loop := simulate_guard(guard_position, obstacles, grid_size)
 
+    fmt.printfln("walked count: %v", len(walked_positions))
+    fmt.printfln("initial loop: %v", initial_loop)
+
+    fmt.println("\ntesting new obstacles for loops (slow)")
     loop_count := 0
 
     for new_obstacle in walked_positions {
@@ -45,30 +49,24 @@ main :: proc() {
         
         append(&obstacles, new_obstacle)
         
-        new_walked_positions, loop := simulate_guard(guard_position, obstacles, grid_size)
-
-        for _, directions in new_walked_positions {
-            delete(directions)
-        }
-        delete(new_walked_positions)
+        _, loop := simulate_guard(guard_position, obstacles, grid_size, context.temp_allocator)
+        free_all(context.temp_allocator)
 
         if loop {
             loop_count += 1
-
-            fmt.printfln("(%v, %v) - loops: %v", new_obstacle.x, new_obstacle.y, loop_count)
         }
 
         pop_safe(&obstacles)
     }
 
-    fmt.printfln("walked count: %v", len(walked_positions))
-    fmt.printfln("initial loop: %v", initial_loop)
     fmt.printfln("loop count: %v", loop_count)
 }
 
-simulate_guard :: proc(initial_guard_position: Vector, obstacles: [dynamic]Vector, grid_size: int) -> (walked_positions : map[Vector]([dynamic]Vector), loop: bool = false) {
+simulate_guard :: proc(guard_position: Vector, obstacles: [dynamic]Vector, grid_size: int, allocator := context.allocator) -> (walked_positions : map[Vector]([dynamic]Vector), loop: bool = false) {
+    
+    walked_positions = make(map[Vector]([dynamic]Vector), allocator)
 
-    guard_position := initial_guard_position
+    guard_position := guard_position
     guard_direction : Vector = { 0, -1 }
 
     for {
@@ -79,7 +77,7 @@ simulate_guard :: proc(initial_guard_position: Vector, obstacles: [dynamic]Vecto
         directions, exists := walked_positions[guard_position]
 
         if !exists {
-            directions = make([dynamic]Vector)
+            directions = make([dynamic]Vector, allocator)
         } else {
             if slice.contains(directions[:], guard_direction) {
                 loop = true

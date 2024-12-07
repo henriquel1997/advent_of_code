@@ -57,13 +57,9 @@ is_valid :: proc(equation: Equation, previous_result: int = 0, index: int = 0, e
         if is_valid(equation, previous_result * value, index + 1, enable_concat) {
             return true
         } else if enable_concat {
-            concat_str := fmt.aprint(previous_result, value, sep = "")
-            defer delete(concat_str)
-
-            concat, ok := strconv.parse_int(concat_str)
-            if !ok do return false
-
-            return is_valid(equation, concat, index + 1, enable_concat)
+            pow := 10
+            for value >= pow do pow *= 10
+            return is_valid(equation, (previous_result * pow) + value, index + 1, enable_concat)
         }
     }
 

@@ -3,6 +3,7 @@ package day_15
 import "core:os"
 import "core:fmt"
 import "core:strings"
+import "core:slice"
 
 Vector :: [2]int
 
@@ -96,7 +97,7 @@ execute_moves :: proc(warehouse_map: ^WarehouseMap, moves: string) {
         clear(&entity_queue)
         append(&entity_queue, warehouse_map.robot)
 
-        collision_loop: for len(entity_queue) > 0 {
+        for len(entity_queue) > 0 {
             entity := pop_front(&entity_queue)
             entity.position += direction
 
@@ -107,7 +108,7 @@ execute_moves :: proc(warehouse_map: ^WarehouseMap, moves: string) {
             }
 
             for box, index in warehouse_map.boxes {
-                if is_colliding(entity, box) {
+                if is_colliding(entity, box) && !slice.contains(box_indices[:], index) {
                     append(&box_indices, index)
                     append(&entity_queue, box)
                 }

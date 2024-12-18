@@ -66,10 +66,6 @@ solve_maze :: proc(start, goal: Vector, walls: map[Vector]struct{}, allocator :=
         cost: int,
     }
 
-    heuristic :: proc(a, b: Vector) -> int {
-        return abs(a.x - b.x) + abs(a.y - b.y)
-    }
-
     initial_state : State = {
         position = start,
         direction = { 1,  0 },
